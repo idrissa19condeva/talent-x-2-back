@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { Type, plainToInstance } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
 enum NodeEnv {
@@ -12,6 +12,7 @@ class EnvSchema {
   @IsEnum(NodeEnv)
   NODE_ENV: NodeEnv = NodeEnv.Development;
 
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(65535)
