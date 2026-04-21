@@ -7,7 +7,6 @@ export interface ClerkAuthContext {
   claims: Record<string, unknown>;
 }
 
-export interface AuthenticatedRequest extends Request {
+export type AuthenticatedRequest = Request & {
   auth?: ClerkAuthContext;
-  id?: string; // request id from pino
-}
+};
