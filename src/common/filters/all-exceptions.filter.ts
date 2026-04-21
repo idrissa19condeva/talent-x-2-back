@@ -28,6 +28,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<AuthenticatedRequest>();
+    const requestId = req.id !== undefined ? String(req.id) : undefined;
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
@@ -53,24 +54,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       message,
       error,
-      requestId: req.id,
+      requestId,
       timestamp: new Date().toISOString(),
       path: req.url,
       details: process.env.NODE_ENV === 'production' ? undefined : details,
     };
 
     if (status >= 500) {
-      this.logger.error({ err: exception, requestId: req.id, path: req.url }, 'Unhandled error');
+      this.logger.error({ err: exception, requestId, path: req.url }, 'Unhandled error');
       if (process.env.SENTRY_DSN) {
         Sentry.withScope((scope) => {
-          scope.setTag('requestId', req.id ?? 'unknown');
+          scope.setTag('requestId', requestId ?? 'unknown');
           scope.setExtra('path', req.url);
           scope.setExtra('method', req.method);
           Sentry.captureException(exception);
         });
       }
     } else {
-      this.logger.warn({ status, requestId: req.id, path: req.url, message }, 'Handled error');
+      this.logger.warn({ status, requestId, path: req.url, message }, 'Handled error');
     }
 
     res.status(status).json(body);
