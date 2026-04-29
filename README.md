@@ -65,7 +65,7 @@ cp .env.example .env
 # 3. Start Postgres
 npm run db:up
 
-# 4. Run migrations
+# 4. Run migrations  (creates User, Profile, AuthEvent + adds emailVerifiedAt)
 npm run prisma:migrate -- --name init
 
 # 5. Dev server
@@ -108,12 +108,12 @@ In the Clerk Dashboard:
 
 ## API surface (v1)
 
-| Method | Path                   | Auth     | Purpose                    |
-| ------ | ---------------------- | -------- | -------------------------- |
-| GET    | `/v1/health`           | public   | Liveness + DB ping         |
-| GET    | `/v1/users/me`         | Bearer   | Current user + profile     |
-| PATCH  | `/v1/users/me/profile` | Bearer   | Update headline/bio        |
-| POST   | `/webhooks/clerk`      | svix sig | Clerk user sync            |
+| Method | Path                   | Auth                | Purpose                    |
+| ------ | ---------------------- | ------------------- | -------------------------- |
+| GET    | `/v1/health`           | public              | Liveness + DB ping         |
+| GET    | `/v1/users/me`         | Bearer              | Current user + profile (includes `emailVerified` boolean) |
+| PATCH  | `/v1/users/me/profile` | Bearer + verified ✉️ | Update headline/bio        |
+| POST   | `/webhooks/clerk`      | svix signature      | Clerk user sync (creates / updates `emailVerifiedAt`) |
 
 Errors follow a shared shape:
 
@@ -135,6 +135,23 @@ Errors follow a shared shape:
   Sentry when `SENTRY_DSN` is set.
 - Authorization headers, cookies, and svix signatures are redacted from logs.
 
+## Email verification awareness
+
+- `User.emailVerifiedAt` is a nullable timestamp set whenever the Clerk
+  webhook delivers a `user.created` / `user.updated` event whose primary email
+  has `verification.status === 'verified'`.
+- `GET /v1/users/me` returns `user.emailVerified` (boolean) so the mobile app
+  can render the user's verification status without a second round-trip.
+- Endpoints that require a verified email apply both guards:
+  ```ts
+  @UseGuards(VerifiedEmailGuard)
+  @RequiresVerified()
+  async updateProfile() { ... }
+  ```
+  `VerifiedEmailGuard` reads the `RequiresVerified` metadata, looks up the
+  Clerk-synced row, and rejects with 403 `email_not_verified` if the user has
+  no `emailVerifiedAt`. The frontend surfaces this as a translated banner.
+
 ## Security notes
 
 - Webhook signatures are verified with the raw request body (`express.raw`
@@ -142,6 +159,10 @@ Errors follow a shared shape:
 - `helmet` is enabled with defaults.
 - `class-validator` rejects unknown fields.
 - Secrets live only in `.env`; `.env` is gitignored.
+- The backend never accepts an `emailVerifiedAt` flag from the frontend — the
+  field is **only** writable by the Clerk webhook handler, after svix verifies
+  the signature. The `RequiresVerified` guard exists so handlers can opt-in to
+  enforcing a verified email without trusting any frontend assertion.
 - For production add rate limiting (e.g. `@nestjs/throttler`) and a stricter
   `CORS_ORIGIN`.
 
