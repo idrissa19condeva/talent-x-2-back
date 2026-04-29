@@ -1,0 +1,56 @@
+// Prisma schema — TalentX
+// Clerk owns identity/password. We mirror what the app needs.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  clerkUserId     String    @unique
+  email           String    @unique
+  firstName       String?
+  lastName        String?
+  imageUrl        String?
+  locale          String?   @default("en")
+  emailVerifiedAt DateTime?
+  lastSeenAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  profile      Profile?
+  authEvents   AuthEvent[]
+
+  @@index([clerkUserId])
+  @@index([email])
+}
+
+model Profile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline   String?
+  bio        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Lightweight audit trail — surfaces webhook + auth signals for debugging.
+model AuthEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type       String   // e.g. "user.created", "user.updated", "user.deleted"
+  source     String   // "clerk_webhook" | "api"
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}

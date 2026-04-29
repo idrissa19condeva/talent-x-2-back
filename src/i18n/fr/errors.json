@@ -1,0 +1,8 @@
+{
+  "unauthorized": "Authentification requise",
+  "invalid_token": "Jeton invalide ou expiré",
+  "user_not_found": "Utilisateur introuvable",
+  "webhook_invalid": "Signature du webhook invalide",
+  "validation_failed": "La validation de la requête a échoué",
+  "internal_error": "Une erreur est survenue"
+}

@@ -1,0 +1,8 @@
+{
+  "unauthorized": "Authentication required",
+  "invalid_token": "Invalid or expired token",
+  "user_not_found": "User not found",
+  "webhook_invalid": "Invalid webhook signature",
+  "validation_failed": "Request validation failed",
+  "internal_error": "Something went wrong"
+}
