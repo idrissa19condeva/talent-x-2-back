@@ -8,6 +8,7 @@ export interface ClerkUserPayload {
   firstName?: string | null;
   lastName?: string | null;
   imageUrl?: string | null;
+  emailVerifiedAt?: Date | null;
 }
 
 @Injectable()
@@ -33,6 +34,7 @@ export class UsersService {
       firstName: payload.firstName ?? null,
       lastName: payload.lastName ?? null,
       imageUrl: payload.imageUrl ?? null,
+      emailVerifiedAt: payload.emailVerifiedAt ?? null,
       profile: { create: {} },
     };
     const user = await this.prisma.user.upsert({
@@ -43,9 +45,12 @@ export class UsersService {
         firstName: payload.firstName ?? null,
         lastName: payload.lastName ?? null,
         imageUrl: payload.imageUrl ?? null,
+        emailVerifiedAt: payload.emailVerifiedAt ?? null,
       },
     });
-    this.log.log(`upsert user clerkUserId=${payload.clerkUserId}`);
+    this.log.log(
+      `upsert user clerkUserId=${payload.clerkUserId} verified=${payload.emailVerifiedAt ? 'yes' : 'no'}`,
+    );
     return user;
   }
 

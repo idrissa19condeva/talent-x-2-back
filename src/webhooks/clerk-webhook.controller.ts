@@ -16,9 +16,15 @@ import { Public } from '../common/decorators/public.decorator';
 import { UsersService } from '../users/users.service';
 import type { Request } from 'express';
 
+interface ClerkEmailVerification {
+  status?: 'verified' | 'unverified' | 'transferable' | 'failed' | 'expired' | string;
+  verified_at_unix?: number;
+}
+
 interface ClerkEmailAddress {
   id: string;
   email_address: string;
+  verification?: ClerkEmailVerification | null;
 }
 
 interface ClerkUserData {
@@ -111,12 +117,19 @@ export class ClerkWebhookController {
     if (!primary) {
       throw new BadRequestException('User payload missing email');
     }
+    const v = primary.verification;
+    let emailVerifiedAt: Date | null = null;
+    if (v?.status === 'verified') {
+      emailVerifiedAt =
+        typeof v.verified_at_unix === 'number' ? new Date(v.verified_at_unix * 1000) : new Date();
+    }
     return {
       clerkUserId: data.id,
       email: primary.email_address,
       firstName: data.first_name ?? null,
       lastName: data.last_name ?? null,
       imageUrl: data.image_url ?? null,
+      emailVerifiedAt,
     };
   }
 }

@@ -24,8 +24,9 @@ describe('UsersService', () => {
     service = moduleRef.get(UsersService);
   });
 
-  it('upserts a user from Clerk payload', async () => {
+  it('upserts a user from Clerk payload (verified email persists)', async () => {
     prisma.user.upsert.mockResolvedValue({ id: 'u1', clerkUserId: 'clerk_1' });
+    const verifiedAt = new Date('2026-04-01T12:00:00Z');
 
     const result = await service.upsertFromClerk({
       clerkUserId: 'clerk_1',
@@ -33,14 +34,30 @@ describe('UsersService', () => {
       firstName: 'Ada',
       lastName: 'Lovelace',
       imageUrl: null,
+      emailVerifiedAt: verifiedAt,
     });
 
     expect(prisma.user.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { clerkUserId: 'clerk_1' },
+        create: expect.objectContaining({ emailVerifiedAt: verifiedAt }),
+        update: expect.objectContaining({ emailVerifiedAt: verifiedAt }),
       }),
     );
     expect(result).toEqual({ id: 'u1', clerkUserId: 'clerk_1' });
+  });
+
+  it('upserts a user with null emailVerifiedAt when unverified', async () => {
+    prisma.user.upsert.mockResolvedValue({ id: 'u2', clerkUserId: 'clerk_2' });
+    await service.upsertFromClerk({
+      clerkUserId: 'clerk_2',
+      email: 'b@c.com',
+    });
+    expect(prisma.user.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ emailVerifiedAt: null }),
+      }),
+    );
   });
 
   it('deletes a user by clerk id when it exists', async () => {

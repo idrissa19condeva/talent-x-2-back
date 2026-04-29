@@ -1,7 +1,9 @@
-import { Controller, Get, Logger, Patch, Body } from '@nestjs/common';
+import { Controller, Get, Logger, Patch, Body, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { UsersService } from './users.service';
 import { CurrentAuth } from '../common/decorators/current-user.decorator';
+import { RequiresVerified } from '../common/decorators/requires-verified.decorator';
+import { VerifiedEmailGuard } from '../common/guards/verified-email.guard';
 import type { ClerkAuthContext } from '../common/types/authenticated-request';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -31,10 +33,18 @@ export class UsersController {
     const user = await this.users.getByClerkIdOrThrow(auth.userId);
     await this.users.touchLastSeen(auth.userId);
     const profile = await this.prisma.profile.findUnique({ where: { userId: user.id } });
-    return { user, profile };
+    return {
+      user: {
+        ...user,
+        emailVerified: !!user.emailVerifiedAt,
+      },
+      profile,
+    };
   }
 
   @Patch('me/profile')
+  @UseGuards(VerifiedEmailGuard)
+  @RequiresVerified()
   async updateProfile(
     @CurrentAuth() auth: ClerkAuthContext,
     @Body() dto: UpdateProfileDto,
